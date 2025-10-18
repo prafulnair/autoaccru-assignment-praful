@@ -1,22 +1,37 @@
 from sqlalchemy.orm import Session
 from . import models, schemas
 
+
 def list_patients(db: Session):
-    return (db.query(models.PatientTable).order_by(models.PatientTable.id.desc()).all())
+    return (
+        db.query(models.PatientTable)
+        .order_by(models.PatientTable.id.desc())
+        .all()
+    )
 
 
 def get_patient_by_identity(
-    db : Session,
+    db: Session,
     first_name: str,
     last_name: str,
     phone_number: str,
 ):
     return (
-        db.query(models.PatientTable).filter(
+        db.query(models.PatientTable)
+        .filter(
             models.PatientTable.first_name == first_name,
             models.PatientTable.last_name == last_name,
-            models.PatientTable.phone_number == phone_number
-        ).first()
+            models.PatientTable.phone_number == phone_number,
+        )
+        .first()
+    )
+
+
+def get_patient_by_id(db: Session, patient_id: int):
+    return (
+        db.query(models.PatientTable)
+        .filter(models.PatientTable.id == patient_id)
+        .first()
     )
 
 
