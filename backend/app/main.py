@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 from .voice_agent import transcribe_audio_data 
+from .ai_parser import parse_patient_details
 
 from .database import init_db, get_db
 
@@ -44,8 +45,42 @@ def get_patient(patient_id: int, db: Session = Depends(get_db)):
 @app.post('/voice-input', response_model=schemas.Patient, status_code=201)
 def voice_input(file: UploadFile  = File(...), db: Session = Depends(get_db)):
     """
-    Recv audio file (Data) -> transcribes it using 11_labs, extract patient info
-    and creates / returns a patiennt record
+    Receive audio file -> transcribe via ElevenLabs -> parse via Gemini -> 
+    store patient.
+
     """
+    # first, transcribe the voice data
+    transcribed_text = transcribe_audio_data(file)
+    
+    # second, use Gemini to extract patient information
+    parsed = parse_patient_details(transcribed_text)
+
+    # now we haev to validate the parsed data
+    first_name = parsed.get("first_name")
+    last_name = parsed.get("last_name")
+    phone = parsed.get("phone_number")
+    address = parsed.get("address")
+
+    if not all([first_name, last_name, phone, address]):
+        raise HTTPException(
+            status_code= 400,
+            detail={
+                "error": "Could not extract all required details from the audio. Please try again",
+                "parsed_result":parsed,
+                "transcribed_text": transcribed_text
+            }
+        )
+    
+    # if everythign is good (data is complete and valid)
+    # move in with Persistance
+    patient_in = schemas.PatientCreate(
+        first_name=first_name,
+        last_name=last_name,
+        phone_number=phone,
+        address=address
+    )
+
+    new_patient = crud.create_patient(db, patient_in)
+    return new_patient
 
     ...
