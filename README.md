@@ -1,6 +1,4 @@
-Absolutely. Here’s a sample README.md you can drop in and edit as you build. This will look professional, clarify your design decisions, and make it easy for them to test/run locally:
 
-⸻
 
 Dentist Voice Agent – Take Home Assessment
 
