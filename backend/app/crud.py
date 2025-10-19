@@ -55,3 +55,6 @@ def create_patient(db: Session, patient_in: schemas.PatientCreate):
     db.commit()
     db.refresh(obj)
     return obj
+
+def get_patient_by_phone(db: Session, phone: str):
+    return db.query(models.PatientTable).filter(models.PatientTable.phone_number == phone).first()

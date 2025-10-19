@@ -50,11 +50,11 @@ def voice_input(file: UploadFile  = File(...), db: Session = Depends(get_db)):
 
     """
     try:
-        # Step 1: Transcribe voice data
+        # First, Transcribe voice data
         transcribed_text = transcribe_audio_data(file)
         print("Transcribed text:\n", transcribed_text)
 
-        # Step 2: Use Gemini (or parser) to extract patient information
+        # Then Use Gemini (or parser) to extract patient information
         parsed = parse_patient_details(transcribed_text)
         print("Parsed fields:", parsed)
 
@@ -65,12 +65,25 @@ def voice_input(file: UploadFile  = File(...), db: Session = Depends(get_db)):
     # now we haev to validate the parsed data
     first_name = parsed.get("first_name")
     last_name = parsed.get("last_name")
+
+    # check if the patient exist in the database, if yes, , ask for patient id unique to the patient, if patient id matches, its existing patient
+    # then change the new_patient boolean to false. 
+
     phone = parsed.get("phone_number")
     address = parsed.get("address")
+        
+    # Check if patient already exists (by phone number)
+    existing_patient = crud.get_patient_by_phone(db, phone)
+
+    if existing_patient:
+        # Returning patient
+        existing_patient.new_patient = False
+        db.commit()
+        db.refresh(existing_patient)
+        return existing_patient
 
     if not all([first_name, last_name, phone, address]):
             # For demo purposes, still store partial data so frontend sees success
-            # Comment out this block if you want to strictly enforce completeness
             fallback_patient = schemas.PatientCreate(
                 first_name=first_name or "Unknown",
                 last_name=last_name or "Unknown",
