@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from .voice_agent import transcribe_audio_data 
 from .ai_parser import parse_patient_details
+import re
 
 from .database import init_db, get_db
 
@@ -20,6 +21,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def clean_and_validate(parsed: dict) -> dict:
+    # remove white space
+    for k, v in parsed.items():
+        if isinstance(v, str):
+            parsed[k] = v.strip() or None
+    
+    # make sure its normalized to digits only
+    if parsed.get("phone_number"):
+        parsed["phone_number"] = re.sub(r"\D", "", parsed["phone_number"])
+
+    # check digit length
+    if parsed.get("phone_number") and len(parsed["phone_number"]) < 10:
+        parsed["phone_number"] =None
+
+    return parsed
 
 @app.on_event("startup")
 def startup_event():
@@ -56,6 +72,8 @@ def voice_input(file: UploadFile  = File(...), db: Session = Depends(get_db)):
 
         # Then Use Gemini (or parser) to extract patient information
         parsed = parse_patient_details(transcribed_text)
+        parsed = clean_and_validate(parsed)
+
         print("Parsed fields:", parsed)
 
     except Exception as e:

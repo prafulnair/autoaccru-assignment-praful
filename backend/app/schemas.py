@@ -14,7 +14,6 @@ class Patient(PatientBase):
     id: int
     new_patient: bool
 
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}
 
  
