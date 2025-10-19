@@ -49,7 +49,7 @@ export default function PatientTable() {
                     <th className="p-3 border-b">First Name</th>
                     <th className="p-3 border-b">Last Name</th>
                     <th className="p-3 border-b">Phone</th>
-                    <th className="p-3 border-b">New Patient</th>
+                    <th className="p-3 border-b">Patient Type</th>
                   </tr>
                 </thead>
                 <tbody>
