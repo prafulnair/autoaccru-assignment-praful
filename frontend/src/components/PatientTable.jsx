@@ -27,13 +27,21 @@ export default function PatientTable() {
     fetchPatients();
   }, []);
 
-  const handleRowClick = (p) => {
-    setSelected(p);
-    setOpen(true);
+  const handleRowClick = async (p) => {
+    try {
+      // Optional: fetch full details in case new fields are added later
+      const res = await axiosClient.get(`/patients/${p.id}`);
+      setSelected(res.data);
+      setOpen(true);
+    } catch (err) {
+      console.error("Error fetching patient details:", err);
+      setSelected(p); // fallback to table data
+      setOpen(true);
+    }
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle>Patient Records</CardTitle>
@@ -41,6 +49,8 @@ export default function PatientTable() {
         <CardContent>
           {loading ? (
             <p className="text-gray-500 text-center py-6">Loading...</p>
+          ) : patients.length === 0 ? (
+            <p className="text-gray-500 text-center py-6">No patients found.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -80,13 +90,14 @@ export default function PatientTable() {
         </CardContent>
       </Card>
 
+      <RecordButton onAdded={fetchPatients} />
+
+      {/* Dialog for selected patient */}
       <PatientDialog
         open={open}
         onOpenChange={setOpen}
         patient={selected}
       />
-
-      <RecordButton onAdded={fetchPatients} />
     </div>
   );
 }
