@@ -141,9 +141,3 @@ frontend/
 ```
 
 ---
-
-## Notes
-
-- No auth; CORS allows http://localhost:5173.
-- Keep API keys in `.env`; never commit them.
-- The goal is clarity over complexity: small surface area, production-style code paths.
