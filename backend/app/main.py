@@ -22,6 +22,20 @@ app.add_middleware(
 )
 
 def clean_and_validate(parsed: dict) -> dict:
+    """
+    Normalize and minimally validate parsed patient data.
+
+    Strips whitespace from all string fields and normalizes phone numbers to
+    digits-only. If a phone number is present but shorter than 10 digits,
+    sets it to None to signal an invalid value.
+
+    Args:
+        parsed (dict): Dictionary with keys like 'first_name', 'last_name',
+        'phone_number', 'address'.
+
+    Returns:
+        dict: The normalized dictionary.
+    """
     # remove white space
     for k, v in parsed.items():
         if isinstance(v, str):
@@ -39,20 +53,55 @@ def clean_and_validate(parsed: dict) -> dict:
 
 @app.on_event("startup")
 def startup_event():
+    """
+    FastAPI startup hook that initializes the database schema if it does not exist.
+    """
     init_db()
 
 
 @app.get("/patients", response_model=List[schemas.Patient])
 def get_patients(db: Session = Depends(get_db)):
+    """
+    List all patients ordered by newest first.
+
+    Args:
+        db (Session): Injected SQLAlchemy session.
+
+    Returns:
+        List[schemas.Patient]: Serialized patient records.
+    """
     return crud.list_patients(db)
 
 @app.post("/patients", response_model=schemas.Patient, status_code=201)
 def add_patient(patient: schemas.PatientCreate, db: Session = Depends(get_db)):
+    """
+    Create a patient record from a structured JSON payload.
+
+    Args:
+        patient (schemas.PatientCreate): Patient payload.
+        db (Session): Injected SQLAlchemy session.
+
+    Returns:
+        schemas.Patient: The persisted patient.
+    """
     return crud.create_patient(db, patient)
 
 
 @app.get("/patients/{patient_id}", response_model=schemas.Patient)
 def get_patient(patient_id: int, db: Session = Depends(get_db)):
+    """
+    Retrieve a single patient by ID.
+
+    Args:
+        patient_id (int): Primary key of the patient.
+        db (Session): Injected SQLAlchemy session.
+
+    Raises:
+        HTTPException: 404 if the patient does not exist.
+
+    Returns:
+        schemas.Patient: The matching patient.
+    """
     patient = crud.get_patient_by_id(db, patient_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -61,9 +110,26 @@ def get_patient(patient_id: int, db: Session = Depends(get_db)):
 @app.post('/voice-input', response_model=schemas.Patient, status_code=201)
 def voice_input(file: UploadFile  = File(...), db: Session = Depends(get_db)):
     """
-    Receive audio file -> transcribe via ElevenLabs -> parse via Gemini -> 
-    store patient.
+    Voice intake endpoint: audio → STT → LLM parsing → persistence.
 
+    Workflow:
+      1) Transcribe audio with ElevenLabs.
+      2) Parse patient fields with Gemini into JSON.
+      3) Normalize fields (e.g., digits-only phone).
+      4) If an existing patient with the same normalized phone is found,
+         mark them as returning (new_patient=False) and return that record.
+      5) Otherwise, create a new patient (new_patient=True).
+      6) If some fields are missing, create a minimal fallback record.
+
+    Args:
+        file (UploadFile): Audio file uploaded by the client.
+        db (Session): Injected SQLAlchemy session.
+
+    Raises:
+        HTTPException: 500 if transcription or parsing fails.
+
+    Returns:
+        schemas.Patient: The created or updated patient record.
     """
     try:
         # First, Transcribe voice data

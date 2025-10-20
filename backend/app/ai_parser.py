@@ -16,15 +16,29 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 
 def parse_patient_details(transcribed_text: str) -> dict:
-    """
-    Uses Gemini to extract structured patient details from the transcribed voice text.
-    Returns a dict/json like:
-    {
-        "first_name": "John",
-        "last_name": "Doe",
-        "phone_number": "5145737144",
-        "address": "1570 Rue Saint Timothée, Montreal"
-    }
+    """Extract structured patient data from a speech transcript using Gemini.
+
+    The model is prompted to return JSON only with the following fields:
+    - first_name
+    - last_name
+    - phone_number (requested as digits-only)
+    - address
+
+    Args:
+        transcribed_text: Raw transcript string from STT (e.g., ElevenLabs).
+
+    Returns:
+        dict: A JSON-like mapping with possible `None` values if a field
+        cannot be confidently extracted, e.g.:
+        {
+          "first_name": str | None,
+          "last_name": str | None,
+          "phone_number": str | None,
+          "address": str | None
+        }
+
+    Raises:
+        RuntimeError: If the model returns an empty response or non-JSON output.
     """
     model = genai.GenerativeModel(
         model_name=GEMINI_MODEL,
