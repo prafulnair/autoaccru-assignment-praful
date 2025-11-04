@@ -1,4 +1,4 @@
-# Dentist Voice Agent – Take-Home Assessment
+# Dentist Clinic - Voice Agent
 
 A minimal, end-to-end prototype of a dentist "voice intake" flow. Patients can be added by speaking their details; the app persists them and shows a simple table + detail dialog.
 
