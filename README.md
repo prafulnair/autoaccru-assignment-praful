@@ -53,6 +53,41 @@ App runs at http://localhost:5173.
 
 ---
 
+## Configuration & secrets
+
+### Required environment variables
+
+| Variable | Required | Description |
+| --- | --- | --- |
+| `ELEVENLABS_API_KEY` | ✅ | ElevenLabs Speech-to-Text key used by the backend transcription helper. |
+| `GEMINI_API_KEY` | ✅ | Google Gemini API key for LLM parsing. |
+| `GEMINI_MODEL` | ⛔️ (optional) | Override the Gemini model (`gemini-2.5-flash` by default). |
+| `BACKEND_ALLOWED_ORIGINS` | ⛔️ | Comma-separated list of origins permitted by CORS (e.g., `http://localhost:5173,https://voice.dentist.app`). |
+| `BACKEND_APP_TITLE` | ⛔️ | Custom FastAPI title for docs/metadata. |
+| `BACKEND_LOG_LEVEL` | ⛔️ | Logging verbosity (`INFO`, `DEBUG`, etc.). |
+| `BACKEND_ALLOW_METHODS` | ⛔️ | Comma-separated HTTP verbs for CORS (default `*`). |
+| `BACKEND_ALLOW_HEADERS` | ⛔️ | Comma-separated headers for CORS (default `*`). |
+| `BACKEND_ALLOW_CREDENTIALS` | ⛔️ | Set to `false` to disable credentialed CORS requests. |
+
+> ℹ️ The backend loads environment variables from `.env` locally via `python-dotenv`. In production, inject them via your deployment platform or a secret manager.
+
+### Secrets management
+
+- **Local development**: store keys in `backend/.env` (not committed) as shown above.
+- **Production/staging**: use a managed secret store (e.g., AWS Secrets Manager, GCP Secret Manager, Doppler, Vault) and configure the runtime to populate the environment variables listed above.
+- Rotate keys regularly and scope them to the minimum necessary permissions.
+
+### Error codes & troubleshooting
+
+| Endpoint | Status | Meaning | Notes |
+| --- | --- | --- | --- |
+| `/patients/{id}` | `404` | Patient not found | Returned when a requested record does not exist. |
+| `/voice-input` | `422` | Incomplete patient data | Transcript parsed but required fields were missing; frontend should prompt for confirmation or manual entry. |
+| `/voice-input` | `502` | Upstream provider failure | Either transcription (ElevenLabs) or parsing (Gemini) failed even after retries; inspect logs for `provider_error` payload. |
+| `/voice-input` | `500` | Internal processing error | Unexpected server exception. |
+
+---
+
 ## API overview (used by the UI)
 
 ### GET /patients
@@ -98,7 +133,7 @@ Accepts multipart/form-data with field `file` (browser microphone blob). Flow:
    - Else create a new row with `new_patient=true`.
 4. Returns the final patient JSON.
 
-For demo convenience, if some fields are missing, the endpoint can store a minimal fallback record so the UI still reflects the action. This behavior can be disabled in `app/main.py`.
+If the parser cannot confidently return all required fields, the endpoint responds with `422 Incomplete patient data` so the UI can prompt for manual confirmation.
 
 ---
 
