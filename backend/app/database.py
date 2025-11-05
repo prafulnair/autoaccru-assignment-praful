@@ -19,6 +19,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from .models import Base
 
+from typing import Optional
+
+from sqlalchemy.engine import Engine
+
 DATABASE_URL = "sqlite:///./patients.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
@@ -27,9 +31,23 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
-def init_db() -> None:
-    """Create database tables if they don't exist."""
-    Base.metadata.create_all(bind=engine)
+def _ensure_constraints(target_engine: Engine) -> None:
+    """Ensure runtime database constraints that aren't handled by metadata."""
+
+    with target_engine.begin() as connection:
+        # SQLite's CREATE UNIQUE INDEX IF NOT EXISTS is idempotent and keeps
+        # migrations simple for this prototype environment.
+        connection.exec_driver_sql(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_patients_phone_number ON patients (phone_number)"
+        )
+
+
+def init_db(engine_override: Optional[Engine] = None) -> None:
+    """Create database tables if they don't exist and enforce constraints."""
+
+    target_engine = engine_override or engine
+    Base.metadata.create_all(bind=target_engine)
+    _ensure_constraints(target_engine)
 
 
 def get_db():
